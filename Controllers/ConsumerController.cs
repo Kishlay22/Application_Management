@@ -1,16 +1,10 @@
-﻿
-using Appointment_Management.Data.Contexts;
-using Appointment_Management.Data.Dto;
+﻿using Appointment_Management.Data.Dto;
 using Appointment_Management.Data.Models;
-using Azure;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Appointment_Management.Services;
 using Microsoft.AspNetCore.JsonPatch;
-using Microsoft.AspNetCore.JsonPatch.Adapters;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using System.Numerics;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Appointment_Management.Controllers
 {
@@ -18,155 +12,88 @@ namespace Appointment_Management.Controllers
     [ApiController]
     public class ConsumerController : ControllerBase
     {
+        private readonly IConsumerService _consumerService;
 
-        private readonly AppointmentContext _context;
-
-        public ConsumerController(AppointmentContext context)
+        public ConsumerController(IConsumerService consumerService)
         {
-            _context = context;
+            _consumerService = consumerService;
         }
 
-        /* -----------------------------------------Method to Gell the list of all the Consumers----------------------------------------- */
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            var consumers = await _consumerService.GetAllConsumersAsync();
+            return Ok(consumers);
+        }
 
         [HttpGet]
-        public IActionResult GetAll()
+        [Route("{Id}")]
+        public async Task<IActionResult> GetByid([FromRoute] int Id)
         {
-            var consumers = _context.Consumer.ToList();
-            var consumerDto = new List<ConsumerDto>();
+            var consumerDto = await _consumerService.GetConsumerByIdAsync(Id);
 
-            foreach (var consumer in consumers)
+            if (consumerDto == null)
             {
-                consumerDto.Add(new ConsumerDto()
-                {
-                    Id = consumer.Id,
-                    Name = consumer.Name,
-                    Email = consumer.Email,
-                    PhoneNo = consumer.PhoneNo
-                });
-
+                return NotFound();
             }
 
             return Ok(consumerDto);
         }
 
-
-        /* ------------------------------------------Method to Gell the Consumer by it's ID----------------------------------------- */
-
-        [HttpGet]
-        [Route("{Id}")]
-        public IActionResult GetByid([FromRoute] int Id)
-        {
-            var consumer = _context.Consumer.Find(Id);
-
-            var consumerDto = new ConsumerDto
-            {
-                Id = consumer.Id,
-                Name = consumer.Name,
-                Email = consumer.Email,
-                PhoneNo = consumer.PhoneNo
-            };
-
-            return Ok(consumerDto);
-        }
-
-
-        /* ------------------------------------------------Method to add a new Consumer------------------------------------------------- */
-
         [HttpPost]
         public IActionResult AddConsumer([FromBody] ConsumerDto consumerDto)
         {
-            var newconsumerdetails = new Consumer
+            try
             {
-                Id = consumerDto.Id,
-                Name = consumerDto.Name,
-                Email = consumerDto.Email,
-                PhoneNo = consumerDto.PhoneNo
-            };
-
-            _context.Consumer.Add(newconsumerdetails);
-            _context.SaveChanges();
-
-            var createconsumerdto = new ConsumerDto
+                var newConsumerId = _consumerService.AddConsumerAsync(consumerDto).Result;
+                return CreatedAtAction(nameof(GetAll), new { id = newConsumerId }, new { Id = newConsumerId });
+            }
+            catch
             {
-
-                Id = newconsumerdetails.Id,
-                Name = newconsumerdetails.Name,
-                Email = newconsumerdetails.Email,
-                PhoneNo = newconsumerdetails.PhoneNo
-            };
-
-            return CreatedAtAction(nameof(GetAll), new { id = createconsumerdto.Id }, createconsumerdto);
+                return BadRequest("Invalid Consumer details.");
+            }
         }
-
-
-        /* --------------------------------------------Method to Update the Consumer Details-------------------------------------------- */
 
         [HttpPut]
         [Route("{Id}")]
         public IActionResult Updatedetail([FromRoute] int Id, [FromBody] UpdateConsumerDto updateConsumerDto)
         {
-            var consumer = _context.Consumer.Find(Id);
+            var updatedConsumer = _consumerService.UpdateConsumerAsync(Id, updateConsumerDto).Result;
 
-            if (consumer == null)
+            if (updatedConsumer == null)
             {
                 return NotFound();
             }
 
-            consumer.Name = updateConsumerDto.Name;
-            consumer.Email = updateConsumerDto.Email;
-            consumer.PhoneNo = updateConsumerDto.PhoneNo;
-
-            _context.Update(consumer);
-            _context.SaveChanges();
-
-            var updatedConsumerDto = new Consumer
-            {
-                Id = consumer.Id,
-                Name = consumer.Name,
-                Email = updateConsumerDto.Email,
-                PhoneNo = updateConsumerDto.PhoneNo
-            };
-
-            return Ok(updatedConsumerDto);
+            return Ok(updatedConsumer);
         }
-
-
-        /* -------------------------------------------Method to Update a single attribute of Consumer------------------------------------------- */
 
         [HttpPatch]
         [Route("{Id}/UpdatePartial")]
-        public IActionResult UpdateConsumerStatus([FromRoute] int Id, [FromBody] JsonPatchDocument<ConsumerDto> updateConsumerDto)
+        public IActionResult UpdateConsumerStatus([FromRoute] int Id, [FromBody] JsonPatchDocument<ConsumerDto> patchDocument)
         {
-            var consumer = _context.Consumer.Find(Id);
-            if (consumer == null)
-                return BadRequest();
+            var updatedConsumer = _consumerService.PartialUpdateConsumerAsync(Id, patchDocument).Result;
 
-            var updateConsumerStatusDto = new ConsumerDto
+            if (updatedConsumer == null)
             {
-                Id = consumer.Id,
-                Name = consumer.Name,
-                Email = consumer.Email,
-                PhoneNo = consumer.PhoneNo
-            };
-
-            updateConsumerDto.ApplyTo(updateConsumerStatusDto, ModelState);
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
+                return NotFound();
             }
 
-            consumer.Name = updateConsumerStatusDto.Name;
-            consumer.Email = updateConsumerStatusDto.Email;
-            consumer.PhoneNo = updateConsumerStatusDto.PhoneNo;
-
-            _context.SaveChanges();
-
-            return Ok(updateConsumerStatusDto);
-
+            return Ok(updatedConsumer);
         }
 
+        [HttpDelete]
+        [Route("{id}")]
+        public IActionResult DeleteConsumer([FromRoute] int id)
+        {
+            var deletedConsumer = _consumerService.DeleteConsumerAsync(id).Result;
+
+            if (deletedConsumer == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(deletedConsumer);
+        }
     }
 }
-
-

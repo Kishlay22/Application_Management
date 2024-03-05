@@ -15,6 +15,7 @@
           "Microsoft.EntityFrameworkCore": "8.0.2",
           "Microsoft.EntityFrameworkCore.SqlServer": "8.0.2",
           "Microsoft.EntityFrameworkCore.Tools": "8.0.2",
+          "Mvc.ModelBinding.MultiParameter": "1.1.8",
           "Swashbuckle.AspNetCore": "6.4.0"
         },
         "runtime": {
@@ -776,6 +777,14 @@
           "lib/netstandard2.0/Mono.TextTemplating.dll": {
             "assemblyVersion": "2.2.0.0",
             "fileVersion": "2.2.1.1"
+          }
+        }
+      },
+      "Mvc.ModelBinding.MultiParameter/1.1.8": {
+        "runtime": {
+          "lib/net8.0/Mvc.ModelBinding.MultiParameter.dll": {
+            "assemblyVersion": "8.0.1.0",
+            "fileVersion": "8.0.1.0"
           }
         }
       },
@@ -1560,6 +1569,13 @@
       "sha512": "sha512-KZYeKBET/2Z0gY1WlTAK7+RHTl7GSbtvTLDXEZZojUdAPqpQNDL6tHv7VUpqfX5VEOh+uRGKaZXkuD253nEOBQ==",
       "path": "mono.texttemplating/2.2.1",
       "hashPath": "mono.texttemplating.2.2.1.nupkg.sha512"
+    },
+    "Mvc.ModelBinding.MultiParameter/1.1.8": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-aBvh2bcjh8WzPmuXQWxAzxgseNrIaV1j+nHMmYZseRD1AA0hQn10qtaufaSKCs+egQ5G78oODu+vgTj178rNJg==",
+      "path": "mvc.modelbinding.multiparameter/1.1.8",
+      "hashPath": "mvc.modelbinding.multiparameter.1.1.8.nupkg.sha512"
     },
     "Newtonsoft.Json/13.0.3": {
       "type": "package",

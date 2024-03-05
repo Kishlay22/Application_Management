@@ -1,16 +1,10 @@
-﻿
-using Appointment_Management.Data.Contexts;
-using Appointment_Management.Data.Dto;
+﻿using Appointment_Management.Data.Dto;
 using Appointment_Management.Data.Models;
-using Azure;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.JsonPatch;
-using Microsoft.AspNetCore.JsonPatch.Adapters;
+using Appointment_Management.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using System.Numerics;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Appointment_Management.Controllers
 {
@@ -18,142 +12,88 @@ namespace Appointment_Management.Controllers
     [ApiController]
     public class AppointmentController : ControllerBase
     {
+        private readonly IAppointmentService _appointmentService;
 
-
-        private readonly AppointmentContext _context;
-
-        public AppointmentController(AppointmentContext context)
+        public AppointmentController(IAppointmentService appointmentService)
         {
-            _context = context;
+            _appointmentService = appointmentService;
         }
-
-        /* -----------------------------------------Method to Gell the list of all the Appointment----------------------------------------- */
 
         [HttpGet]
-        public IActionResult GetAll()
+        public async Task<ActionResult<List<Appointment>>> GetAll()
         {
-            var appointments = _context.Appointments.ToList();
-            var appointmentDto = new List<AppointmentDto>();
-
-            foreach (var appointment in appointments)
-            {
-                appointmentDto.Add(new AppointmentDto()
-                {
-                    Id = appointment.Id,
-                    ConsumerID = appointment.consumer.Id,
-                    DateTime = appointment.DateTime,
-                    DoctorID = appointment.Doctor.EmpID,
-                    Issue = appointment.Issue
-                });
-
-            }
-
-            return Ok(appointmentDto);
+            var appointments = await _appointmentService.GetAllAppointmentsAsync();
+            return Ok(appointments);
         }
-
-
-        /* ------------------------------------------Method to Gell the Appointment by it's ID----------------------------------------- */
 
         [HttpGet]
         [Route("{Id}")]
-        public IActionResult GetByid([FromRoute] int Id)
+        public async Task<IActionResult> GetByid([FromRoute] Guid Id)
         {
-            var appointment = _context.Appointments.Find(Id);
+            var appointmentDto = await _appointmentService.GetAppointmentByIdAsync(Id);
 
-            if(appointment == null)
+            if (appointmentDto == null)
             {
                 return BadRequest();
             }
 
-            var appointmentDto = new AppointmentDto
+            return Ok(appointmentDto);
+        }
+
+        [HttpGet]
+        [Route("searchName/{name}")]
+        public async Task<IActionResult> GetByName([FromRoute] string name)
+        {
+            var appointmentDto = await _appointmentService.GetAppointmentByNameAsync(name);
+
+            if (appointmentDto == null)
             {
-                Id = appointment.Id,
-                ConsumerID = appointment.consumer.Id,
-                DateTime = appointment.DateTime,
-                DoctorID = appointment.Doctor.EmpID,
-                Issue = appointment.Issue
-            };
+                return BadRequest();
+            }
 
             return Ok(appointmentDto);
         }
 
-
-        /* ------------------------------------------------Method to add a new Appointment------------------------------------------------- */
-
         [HttpPost]
-        public  IActionResult AddAppointment([FromBody] AppointmentDto appointmentDto)
+        public IActionResult AddAppointment([FromBody] AppointmentDto appointmentDto)
         {
-           var doctor=  _context.Doctors.FirstOrDefault(option => option.EmpID==appointmentDto.DoctorID);
-           var consumer= _context.Consumer.FirstOrDefault(option=>option.Id==appointmentDto.ConsumerID);
-
-            if(doctor == null || consumer==null) {
-               return BadRequest();
+            try
+            {
+                var newAppointmentId = _appointmentService.AddAppointmentAsync(appointmentDto).Result;
+                return CreatedAtAction(nameof(GetAll), new { id = newAppointmentId }, new { Id = newAppointmentId });
             }
-
-            var newappointmentdetails = new Appointment
+            catch (Exception)
             {
-                Id = appointmentDto.Id,
-                consumer = consumer,
-                DateTime = appointmentDto.DateTime,
-                Doctor = doctor,
-                Issue = appointmentDto.Issue
-            };
-
-            _context.Appointments.Add(newappointmentdetails);
-            _context.SaveChanges();
-
-            var createappointmentdto = new AppointmentDto
-            {
-
-                Id = newappointmentdetails.Id,
-                ConsumerID = newappointmentdetails.consumer.Id,
-                DateTime =newappointmentdetails.DateTime,
-                DoctorID = newappointmentdetails.Doctor.EmpID,
-                Issue = newappointmentdetails.Issue
-            };
-
-            return CreatedAtAction(nameof(GetAll), new { id = createappointmentdto.Id }, createappointmentdto);
+                return BadRequest("Invalid Doctor or Consumer.");
+            }
         }
-
-
-        /* --------------------------------------------Method to Update the Appointment Details-------------------------------------------- */
 
         [HttpPut]
         [Route("{Id}")]
-        public IActionResult Updatedetail([FromRoute] int Id, [FromBody] UpdateAppointmentDto updatdAppointmentDto)
+        public IActionResult Updatedetail([FromRoute] Guid Id, [FromBody] UpdateAppointmentDto updatedAppointmentDto)
         {
-            var doctor = _context.Doctors.FirstOrDefault(option => option.EmpID == updatdAppointmentDto.Doctor.EmpID);
-            var consumer = _context.Consumer.FirstOrDefault(option => option.Id == updatdAppointmentDto.consumer.Id);
-            var appointment = _context.Appointments.Find(Id);
+            var updatedAppointment = _appointmentService.UpdateAppointmentAsync(Id, updatedAppointmentDto).Result;
 
-            if (appointment == null)
+            if (updatedAppointment == null)
             {
                 return NotFound();
             }
 
-            appointment.consumer = consumer;
-            appointment.DateTime = updatdAppointmentDto.DateTime;
-            appointment.Issue = updatdAppointmentDto.Issue;
-            appointment.Doctor = doctor;
-
-            _context.Update(appointment);
-            _context.SaveChanges();
-
-            var updatedAppointmentDto = new Appointment
-            {
-                Id=appointment.Id,
-                consumer = appointment.consumer,
-                DateTime = appointment.DateTime,
-                Doctor = appointment.Doctor,
-                Issue = appointment.Issue
-            };
-
-            return Ok(updatedAppointmentDto);
+            return Ok(updatedAppointment);
         }
 
+        [HttpDelete]
+        [Route("{id}")]
+        public IActionResult DeleteConsumer([FromRoute] Guid id)
+        {
+            var deletedAppointment = _appointmentService.DeleteAppointmentAsync(id).Result;
 
+            if (deletedAppointment == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(deletedAppointment);
+        }
     }
 }
-
-
-
